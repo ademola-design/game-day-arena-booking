@@ -7,36 +7,130 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Calendar, Clock, User, Ticket } from "lucide-react";
 import { format } from "date-fns";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+
+interface UserProfile {
+  id: string;
+  full_name: string | null;
+  phone: string | null;
+}
+
+interface Booking {
+  id: string;
+  service_type: string;
+  service_name: string;
+  booking_date: string;
+  booking_time: string;
+  duration: string;
+  amount: number;
+  payment_reference: string | null;
+  payment_status: string;
+  booking_status: string;
+  created_at: string;
+}
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const [userBookings, setUserBookings] = useState<any[]>([]);
+  const { user, loading } = useAuth();
+  const { toast } = useToast();
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [userBookings, setUserBookings] = useState<Booking[]>([]);
+  const [profileData, setProfileData] = useState({
+    fullName: "",
+    phone: ""
+  });
 
   useEffect(() => {
-    // In a real app, this would fetch from your backend
-    // For now, we'll simulate some bookings
-    const sampleBookings = [
-      {
-        id: "BK-001",
-        service: "Basketball Court",
-        date: new Date(2024, 6, 15),
-        time: "2:00 PM",
-        duration: "2 hours",
-        status: "Confirmed",
-        amount: 5000
-      },
-      {
-        id: "BK-002",
-        service: "Swimming Pool",
-        date: new Date(2024, 6, 20),
-        time: "10:00 AM", 
-        duration: "1 hour",
-        status: "Confirmed",
-        amount: 1500
-      }
-    ];
-    setUserBookings(sampleBookings);
-  }, []);
+    if (!loading && !user) {
+      navigate('/auth');
+      return;
+    }
+
+    if (user) {
+      fetchUserProfile();
+      fetchUserBookings();
+    }
+  }, [user, loading, navigate]);
+
+  const fetchUserProfile = async () => {
+    if (!user) return;
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .single();
+
+    if (error) {
+      console.error('Error fetching profile:', error);
+    } else {
+      setUserProfile(data);
+      setProfileData({
+        fullName: data.full_name || "",
+        phone: data.phone || ""
+      });
+    }
+  };
+
+  const fetchUserBookings = async () => {
+    if (!user) return;
+
+    const { data, error } = await supabase
+      .from('bookings')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching bookings:', error);
+    } else {
+      setUserBookings(data || []);
+    }
+  };
+
+  const updateProfile = async () => {
+    if (!user) return;
+
+    const { error } = await supabase
+      .from('profiles')
+      .upsert({
+        id: user.id,
+        full_name: profileData.fullName,
+        phone: profileData.phone,
+        updated_at: new Date().toISOString()
+      });
+
+    if (error) {
+      toast({
+        title: "Error updating profile",
+        description: error.message,
+        variant: "destructive"
+      });
+    } else {
+      toast({
+        title: "Profile updated",
+        description: "Your profile has been updated successfully."
+      });
+      fetchUserProfile();
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-orange-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-orange-50 py-8">
@@ -44,7 +138,7 @@ const Dashboard = () => {
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-4xl font-bold text-gray-900 mb-2">Dashboard</h1>
-            <p className="text-xl text-gray-600">Manage your bookings and account</p>
+            <p className="text-xl text-gray-600">Welcome back, {userProfile?.full_name || user.email}!</p>
           </div>
           <Button onClick={() => navigate('/')} variant="outline">
             ← Back to Home
@@ -83,24 +177,24 @@ const Dashboard = () => {
                   <Card key={booking.id} className="shadow-lg border-0">
                     <CardHeader className="bg-gradient-to-r from-blue-600 to-orange-500 text-white">
                       <div className="flex justify-between items-start">
-                        <CardTitle className="text-lg">{booking.service}</CardTitle>
-                        <Badge variant={booking.status === "Confirmed" ? "default" : "secondary"} className="bg-green-600">
-                          {booking.status}
+                        <CardTitle className="text-lg">{booking.service_name}</CardTitle>
+                        <Badge variant={booking.booking_status === "confirmed" ? "default" : "secondary"} className="bg-green-600">
+                          {booking.booking_status}
                         </Badge>
                       </div>
                       <CardDescription className="text-blue-100">
-                        Booking ID: {booking.id}
+                        Booking ID: {booking.id.slice(0, 8)}...
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="p-6">
                       <div className="space-y-3">
                         <div className="flex items-center gap-3">
                           <Calendar className="h-5 w-5 text-blue-600" />
-                          <span>{format(booking.date, "PPP")}</span>
+                          <span>{format(new Date(booking.booking_date), "PPP")}</span>
                         </div>
                         <div className="flex items-center gap-3">
                           <Clock className="h-5 w-5 text-blue-600" />
-                          <span>{booking.time} ({booking.duration})</span>
+                          <span>{booking.booking_time} ({booking.duration})</span>
                         </div>
                         <div className="flex justify-between items-center pt-3 border-t">
                           <span className="font-semibold">Amount: ₦{booking.amount.toLocaleString()}</span>
@@ -147,19 +241,23 @@ const Dashboard = () => {
               <CardContent className="p-6">
                 <div className="space-y-4">
                   <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                    <input 
+                      type="email" 
+                      className="w-full p-2 border border-gray-300 rounded-md bg-gray-50"
+                      value={user.email || ""}
+                      disabled
+                    />
+                    <p className="text-sm text-gray-500 mt-1">Email cannot be changed here</p>
+                  </div>
+                  <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
                     <input 
                       type="text" 
                       className="w-full p-2 border border-gray-300 rounded-md"
+                      value={profileData.fullName}
+                      onChange={(e) => setProfileData({...profileData, fullName: e.target.value})}
                       placeholder="Enter your full name"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
-                    <input 
-                      type="email" 
-                      className="w-full p-2 border border-gray-300 rounded-md"
-                      placeholder="Enter your email"
                     />
                   </div>
                   <div>
@@ -167,10 +265,12 @@ const Dashboard = () => {
                     <input 
                       type="tel" 
                       className="w-full p-2 border border-gray-300 rounded-md"
+                      value={profileData.phone}
+                      onChange={(e) => setProfileData({...profileData, phone: e.target.value})}
                       placeholder="Enter your phone number"
                     />
                   </div>
-                  <Button className="bg-blue-600 hover:bg-blue-700">
+                  <Button onClick={updateProfile} className="bg-blue-600 hover:bg-blue-700">
                     Update Profile
                   </Button>
                 </div>

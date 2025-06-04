@@ -1,17 +1,46 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { User } from "lucide-react";
+import { User, LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 
 export const Navigation = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const navigate = useNavigate();
+  const { user, signOut, loading } = useAuth();
+  const { toast } = useToast();
 
   const scrollToSection = (sectionId: string) => {
     const element = document.getElementById(sectionId);
     if (element) {
       element.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      toast({
+        title: "Signed out successfully",
+        description: "You have been logged out."
+      });
+      navigate('/');
+    } catch (error) {
+      toast({
+        title: "Error signing out",
+        description: "Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleAuthAction = () => {
+    if (user) {
+      navigate('/dashboard');
+    } else {
+      navigate('/auth');
     }
   };
 
@@ -65,20 +94,45 @@ export const Navigation = () => {
           </div>
 
           <div className="flex items-center space-x-4">
-            <Button 
-              variant="outline"
-              onClick={() => navigate('/dashboard')}
-              className="hidden md:flex items-center space-x-2"
-            >
-              <User className="h-4 w-4" />
-              <span>Dashboard</span>
-            </Button>
-            <Button 
-              onClick={() => navigate('/booking')}
-              className="bg-blue-600 hover:bg-blue-700"
-            >
-              Book Now
-            </Button>
+            {!loading && (
+              <>
+                {user ? (
+                  <div className="flex items-center space-x-2">
+                    <Button 
+                      variant="outline"
+                      onClick={handleAuthAction}
+                      className="hidden md:flex items-center space-x-2"
+                    >
+                      <User className="h-4 w-4" />
+                      <span>Dashboard</span>
+                    </Button>
+                    <Button 
+                      variant="outline"
+                      onClick={handleSignOut}
+                      className="hidden md:flex items-center space-x-2"
+                    >
+                      <LogOut className="h-4 w-4" />
+                      <span>Sign Out</span>
+                    </Button>
+                  </div>
+                ) : (
+                  <Button 
+                    variant="outline"
+                    onClick={handleAuthAction}
+                    className="hidden md:flex items-center space-x-2"
+                  >
+                    <User className="h-4 w-4" />
+                    <span>Sign In</span>
+                  </Button>
+                )}
+                <Button 
+                  onClick={() => navigate('/booking')}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  Book Now
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </div>
