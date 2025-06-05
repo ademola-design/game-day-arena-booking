@@ -2,15 +2,13 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Calendar, Clock, User, Ticket } from "lucide-react";
-import { format } from "date-fns";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import BookingsTab from "@/components/dashboard/BookingsTab";
+import MembershipTab from "@/components/dashboard/MembershipTab";
+import ProfileTab from "@/components/dashboard/ProfileTab";
 
 interface UserProfile {
   id: string;
@@ -178,175 +176,22 @@ const Dashboard = () => {
                 New Booking
               </Button>
             </div>
-
-            {isLoading ? (
-              <Card className="text-center py-8">
-                <CardContent>
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                  <p className="text-gray-600">Loading your bookings...</p>
-                </CardContent>
-              </Card>
-            ) : userBookings.length === 0 ? (
-              <Card className="text-center py-12">
-                <CardContent>
-                  <Ticket className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-xl font-semibold text-gray-900 mb-2">No bookings yet</h3>
-                  <p className="text-gray-600 mb-4">Make your first booking to get started!</p>
-                  <Button onClick={() => navigate('/booking')}>
-                    Book Now
-                  </Button>
-                </CardContent>
-              </Card>
-            ) : (
-              <>
-                <div className="hidden md:block">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Service</TableHead>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Time</TableHead>
-                        <TableHead>Duration</TableHead>
-                        <TableHead>Amount</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead></TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {userBookings.map((booking) => (
-                        <TableRow key={booking.id}>
-                          <TableCell className="font-medium">{booking.service_name}</TableCell>
-                          <TableCell>{new Date(booking.booking_date).toLocaleDateString()}</TableCell>
-                          <TableCell>{booking.booking_time}</TableCell>
-                          <TableCell>{booking.duration}</TableCell>
-                          <TableCell>₦{booking.amount.toLocaleString()}</TableCell>
-                          <TableCell>
-                            <Badge variant={booking.booking_status === "confirmed" ? "default" : "secondary"} 
-                                  className={booking.booking_status === "confirmed" ? "bg-green-600" : ""}>
-                              {booking.booking_status}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <Button variant="outline" size="sm" onClick={() => navigate(`/receipt?id=${booking.id}`)}>
-                              Receipt
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-                
-                <div className="grid grid-cols-1 gap-6 md:hidden">
-                  {userBookings.map((booking) => (
-                    <Card key={booking.id} className="shadow-lg border-0">
-                      <CardHeader className="bg-gradient-to-r from-blue-600 to-orange-500 text-white">
-                        <div className="flex justify-between items-start">
-                          <CardTitle className="text-lg">{booking.service_name}</CardTitle>
-                          <Badge variant={booking.booking_status === "confirmed" ? "default" : "secondary"} 
-                                className={booking.booking_status === "confirmed" ? "bg-green-600" : ""}>
-                            {booking.booking_status}
-                          </Badge>
-                        </div>
-                        <CardDescription className="text-blue-100">
-                          Booking ID: {booking.id.slice(0, 8)}...
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent className="p-6">
-                        <div className="space-y-3">
-                          <div className="flex items-center gap-3">
-                            <Calendar className="h-5 w-5 text-blue-600" />
-                            <span>{new Date(booking.booking_date).toLocaleDateString()}</span>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <Clock className="h-5 w-5 text-blue-600" />
-                            <span>{booking.booking_time} ({booking.duration})</span>
-                          </div>
-                          <div className="flex justify-between items-center pt-3 border-t">
-                            <span className="font-semibold">Amount: ₦{booking.amount.toLocaleString()}</span>
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              onClick={() => navigate(`/receipt?id=${booking.id}`)}
-                            >
-                              View Receipt
-                            </Button>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </>
-            )}
+            <BookingsTab userBookings={userBookings} isLoading={isLoading} />
           </TabsContent>
 
           <TabsContent value="membership" className="space-y-6">
             <h2 className="text-2xl font-bold text-gray-900">Membership Status</h2>
-            
-            <Card className="shadow-lg border-0">
-              <CardHeader className="bg-gradient-to-r from-orange-500 to-blue-600 text-white">
-                <CardTitle>Current Membership</CardTitle>
-              </CardHeader>
-              <CardContent className="p-6">
-                <div className="text-center py-8">
-                  <User className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-xl font-semibold text-gray-900 mb-2">No Active Membership</h3>
-                  <p className="text-gray-600 mb-4">Upgrade to a membership plan for exclusive benefits and savings!</p>
-                  <Button onClick={() => navigate('/booking')} className="bg-orange-500 hover:bg-orange-600">
-                    Choose Membership Plan
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+            <MembershipTab />
           </TabsContent>
 
           <TabsContent value="profile" className="space-y-6">
             <h2 className="text-2xl font-bold text-gray-900">Profile Settings</h2>
-            
-            <Card className="shadow-lg border-0">
-              <CardHeader>
-                <CardTitle>Account Information</CardTitle>
-                <CardDescription>Manage your personal information and preferences</CardDescription>
-              </CardHeader>
-              <CardContent className="p-6">
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
-                    <input 
-                      type="email" 
-                      className="w-full p-2 border border-gray-300 rounded-md bg-gray-50"
-                      value={user.email || ""}
-                      disabled
-                    />
-                    <p className="text-sm text-gray-500 mt-1">Email cannot be changed here</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-                    <input 
-                      type="text" 
-                      className="w-full p-2 border border-gray-300 rounded-md"
-                      value={profileData.fullName}
-                      onChange={(e) => setProfileData({...profileData, fullName: e.target.value})}
-                      placeholder="Enter your full name"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
-                    <input 
-                      type="tel" 
-                      className="w-full p-2 border border-gray-300 rounded-md"
-                      value={profileData.phone}
-                      onChange={(e) => setProfileData({...profileData, phone: e.target.value})}
-                      placeholder="Enter your phone number"
-                    />
-                  </div>
-                  <Button onClick={updateProfile} className="bg-blue-600 hover:bg-blue-700">
-                    Update Profile
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+            <ProfileTab 
+              user={user}
+              profileData={profileData}
+              setProfileData={setProfileData}
+              updateProfile={updateProfile}
+            />
           </TabsContent>
         </Tabs>
       </div>
