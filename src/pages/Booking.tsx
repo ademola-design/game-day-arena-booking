@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -129,6 +130,49 @@ const Booking = () => {
     }
   };
 
+  const handlePaymentSuccess = async (response: any) => {
+    console.log('Payment successful, reference:', response.reference);
+    
+    try {
+      const savedBooking = await saveBookingToDatabase(response.reference);
+      
+      if (savedBooking) {
+        toast({
+          title: "Booking Confirmed!",
+          description: "Your booking has been saved successfully. Redirecting to dashboard...",
+        });
+        
+        setTimeout(() => {
+          navigate('/dashboard');
+        }, 2000);
+      } else {
+        toast({
+          title: "Payment Successful",
+          description: "Payment completed but there was an issue saving your booking. Please contact support.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('Error saving booking after payment:', error);
+      toast({
+        title: "Payment Successful",
+        description: "Payment completed but there was an issue saving your booking. Please contact support.",
+        variant: "destructive"
+      });
+    }
+    setIsLoading(false);
+  };
+
+  const handlePaymentClose = () => {
+    console.log('Payment modal closed');
+    toast({
+      title: "Payment Cancelled",
+      description: "Your payment was cancelled. Please try again.",
+      variant: "destructive"
+    });
+    setIsLoading(false);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -165,59 +209,18 @@ const Booking = () => {
     try {
       const total = calculateTotal();
       
-      // Check if PaystackPop is available
       if (!(window as any).PaystackPop) {
         throw new Error('Paystack not loaded. Please refresh the page and try again.');
       }
       
-      // Initialize Paystack payment with proper callback function
       const paystackHandler = (window as any).PaystackPop.setup({
         key: 'pk_test_4f155bc2248c217e5cacf4965e3686d0b3bb4229',
         email: bookingData.email,
-        amount: total * 100, // Amount in kobo
+        amount: total * 100,
         currency: 'NGN',
         ref: `BK-${Date.now()}`,
-        callback: async (response: any) => {
-          console.log('Payment successful, reference:', response.reference);
-          
-          try {
-            // Save booking to database
-            const savedBooking = await saveBookingToDatabase(response.reference);
-            
-            if (savedBooking) {
-              toast({
-                title: "Booking Confirmed!",
-                description: "Your booking has been saved successfully. Redirecting to dashboard...",
-              });
-              
-              setTimeout(() => {
-                navigate('/dashboard');
-              }, 2000);
-            } else {
-              toast({
-                title: "Payment Successful",
-                description: "Payment completed but there was an issue saving your booking. Please contact support.",
-                variant: "destructive"
-              });
-            }
-          } catch (error) {
-            console.error('Error saving booking after payment:', error);
-            toast({
-              title: "Payment Successful",
-              description: "Payment completed but there was an issue saving your booking. Please contact support.",
-              variant: "destructive"
-            });
-          }
-        },
-        onClose: () => {
-          console.log('Payment modal closed');
-          toast({
-            title: "Payment Cancelled",
-            description: "Your payment was cancelled. Please try again.",
-            variant: "destructive"
-          });
-          setIsLoading(false);
-        }
+        callback: handlePaymentSuccess,
+        onClose: handlePaymentClose
       });
 
       paystackHandler.openIframe();
