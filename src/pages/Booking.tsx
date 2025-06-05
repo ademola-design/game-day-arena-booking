@@ -123,7 +123,7 @@ const Booking = () => {
 
       // Initialize Paystack payment
       const paystackHandler = (window as any).PaystackPop.setup({
-        key: 'pk_test_your-paystack-public-key', // Replace with your Paystack public key
+        key: 'pk_test_4f155bc2248c217e5cacf4965e3686d0b3bb4229', // Replace with your Paystack public key
         email: bookingData.email,
         amount: total * 100, // Amount in kobo
         currency: 'NGN',
