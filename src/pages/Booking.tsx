@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -13,6 +12,8 @@ import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 
 interface BookingData {
   firstName: string;
@@ -31,6 +32,7 @@ const Booking = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date>();
 
@@ -86,8 +88,59 @@ const Booking = () => {
     return total;
   };
 
+  const saveBookingToDatabase = async (paymentReference: string) => {
+    if (!user) {
+      console.error('No user found when trying to save booking');
+      return null;
+    }
+
+    try {
+      const bookingRecord = {
+        user_id: user.id,
+        service_type: bookingData.membershipType ? 'membership' : 'facility',
+        service_name: bookingData.service || bookingData.membershipType || '',
+        booking_date: selectedDate ? format(selectedDate, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
+        booking_time: bookingData.time || '00:00',
+        duration: bookingData.membershipType ? '30 days' : `${bookingData.duration} hour(s)`,
+        amount: calculateTotal(),
+        payment_reference: paymentReference,
+        payment_status: 'completed',
+        booking_status: 'confirmed'
+      };
+
+      console.log('Saving booking to database:', bookingRecord);
+
+      const { data, error } = await supabase
+        .from('bookings')
+        .insert([bookingRecord])
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error saving booking:', error);
+        throw error;
+      }
+
+      console.log('Booking saved successfully:', data);
+      return data;
+    } catch (error) {
+      console.error('Error in saveBookingToDatabase:', error);
+      return null;
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!user) {
+      toast({
+        title: "Authentication Required",
+        description: "Please sign in to make a booking.",
+        variant: "destructive"
+      });
+      navigate('/auth');
+      return;
+    }
     
     if (!bookingData.firstName || !bookingData.lastName || !bookingData.email || !bookingData.phone) {
       toast({
@@ -110,17 +163,8 @@ const Booking = () => {
     setIsLoading(true);
 
     try {
-      // Initialize Paystack payment
       const total = calculateTotal();
       
-      // Store booking data in localStorage for after payment
-      localStorage.setItem('pendingBooking', JSON.stringify({
-        ...bookingData,
-        date: selectedDate,
-        total: total,
-        bookingId: `BK-${Date.now()}`
-      }));
-
       // Initialize Paystack payment
       const paystackHandler = (window as any).PaystackPop.setup({
         key: 'pk_test_4f155bc2248c217e5cacf4965e3686d0b3bb4229', // Replace with your Paystack public key
@@ -128,27 +172,28 @@ const Booking = () => {
         amount: total * 100, // Amount in kobo
         currency: 'NGN',
         ref: `BK-${Date.now()}`,
-        callback: function(response: any) {
-          // Payment successful
-          toast({
-            title: "Payment Successful!",
-            description: "Your booking has been confirmed. Redirecting to receipt...",
-          });
+        callback: async function(response: any) {
+          console.log('Payment successful, reference:', response.reference);
           
-          // Redirect to receipt page
-          setTimeout(() => {
-            navigate('/receipt', { 
-              state: { 
-                paymentReference: response.reference,
-                bookingData: {
-                  ...bookingData,
-                  date: selectedDate,
-                  total: total,
-                  bookingId: `BK-${Date.now()}`
-                }
-              }
+          // Save booking to database
+          const savedBooking = await saveBookingToDatabase(response.reference);
+          
+          if (savedBooking) {
+            toast({
+              title: "Booking Confirmed!",
+              description: "Your booking has been saved successfully. Redirecting to dashboard...",
             });
-          }, 2000);
+            
+            setTimeout(() => {
+              navigate('/dashboard');
+            }, 2000);
+          } else {
+            toast({
+              title: "Payment Successful",
+              description: "Payment completed but there was an issue saving your booking. Please contact support.",
+              variant: "destructive"
+            });
+          }
         },
         onClose: function() {
           toast({
@@ -162,6 +207,7 @@ const Booking = () => {
       paystackHandler.openIframe();
       
     } catch (error) {
+      console.error('Payment error:', error);
       toast({
         title: "Payment Error",
         description: "There was an error processing your payment. Please try again.",
