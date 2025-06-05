@@ -165,29 +165,43 @@ const Booking = () => {
     try {
       const total = calculateTotal();
       
-      // Initialize Paystack payment
+      // Check if PaystackPop is available
+      if (!(window as any).PaystackPop) {
+        throw new Error('Paystack not loaded. Please refresh the page and try again.');
+      }
+      
+      // Initialize Paystack payment with proper callback function
       const paystackHandler = (window as any).PaystackPop.setup({
-        key: 'pk_test_4f155bc2248c217e5cacf4965e3686d0b3bb4229', // Replace with your Paystack public key
+        key: 'pk_test_4f155bc2248c217e5cacf4965e3686d0b3bb4229',
         email: bookingData.email,
         amount: total * 100, // Amount in kobo
         currency: 'NGN',
         ref: `BK-${Date.now()}`,
-        callback: async function(response: any) {
+        callback: async (response: any) => {
           console.log('Payment successful, reference:', response.reference);
           
-          // Save booking to database
-          const savedBooking = await saveBookingToDatabase(response.reference);
-          
-          if (savedBooking) {
-            toast({
-              title: "Booking Confirmed!",
-              description: "Your booking has been saved successfully. Redirecting to dashboard...",
-            });
+          try {
+            // Save booking to database
+            const savedBooking = await saveBookingToDatabase(response.reference);
             
-            setTimeout(() => {
-              navigate('/dashboard');
-            }, 2000);
-          } else {
+            if (savedBooking) {
+              toast({
+                title: "Booking Confirmed!",
+                description: "Your booking has been saved successfully. Redirecting to dashboard...",
+              });
+              
+              setTimeout(() => {
+                navigate('/dashboard');
+              }, 2000);
+            } else {
+              toast({
+                title: "Payment Successful",
+                description: "Payment completed but there was an issue saving your booking. Please contact support.",
+                variant: "destructive"
+              });
+            }
+          } catch (error) {
+            console.error('Error saving booking after payment:', error);
             toast({
               title: "Payment Successful",
               description: "Payment completed but there was an issue saving your booking. Please contact support.",
@@ -195,12 +209,14 @@ const Booking = () => {
             });
           }
         },
-        onClose: function() {
+        onClose: () => {
+          console.log('Payment modal closed');
           toast({
             title: "Payment Cancelled",
             description: "Your payment was cancelled. Please try again.",
             variant: "destructive"
           });
+          setIsLoading(false);
         }
       });
 
@@ -210,10 +226,9 @@ const Booking = () => {
       console.error('Payment error:', error);
       toast({
         title: "Payment Error",
-        description: "There was an error processing your payment. Please try again.",
+        description: error instanceof Error ? error.message : "There was an error processing your payment. Please try again.",
         variant: "destructive"
       });
-    } finally {
       setIsLoading(false);
     }
   };
