@@ -10,6 +10,7 @@ import { format } from "date-fns";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 interface UserProfile {
   id: string;
@@ -41,6 +42,7 @@ const Dashboard = () => {
     fullName: "",
     phone: ""
   });
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -57,36 +59,53 @@ const Dashboard = () => {
   const fetchUserProfile = async () => {
     if (!user) return;
 
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', user.id)
-      .single();
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
 
-    if (error) {
-      console.error('Error fetching profile:', error);
-    } else {
-      setUserProfile(data);
-      setProfileData({
-        fullName: data.full_name || "",
-        phone: data.phone || ""
-      });
+      if (error) {
+        console.error('Error fetching profile:', error);
+      } else {
+        setUserProfile(data);
+        setProfileData({
+          fullName: data.full_name || "",
+          phone: data.phone || ""
+        });
+      }
+    } catch (error) {
+      console.error('Error in fetchUserProfile:', error);
     }
   };
 
   const fetchUserBookings = async () => {
     if (!user) return;
+    
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('bookings')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
 
-    const { data, error } = await supabase
-      .from('bookings')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('Error fetching bookings:', error);
-    } else {
-      setUserBookings(data || []);
+      if (error) {
+        console.error('Error fetching bookings:', error);
+        toast({
+          title: "Error loading bookings",
+          description: error.message,
+          variant: "destructive"
+        });
+      } else {
+        console.log('Bookings data:', data);
+        setUserBookings(data || []);
+      }
+    } catch (error) {
+      console.error('Error in fetchUserBookings:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -160,7 +179,14 @@ const Dashboard = () => {
               </Button>
             </div>
 
-            {userBookings.length === 0 ? (
+            {isLoading ? (
+              <Card className="text-center py-8">
+                <CardContent>
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                  <p className="text-gray-600">Loading your bookings...</p>
+                </CardContent>
+              </Card>
+            ) : userBookings.length === 0 ? (
               <Card className="text-center py-12">
                 <CardContent>
                   <Ticket className="h-16 w-16 text-gray-400 mx-auto mb-4" />
@@ -172,41 +198,86 @@ const Dashboard = () => {
                 </CardContent>
               </Card>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {userBookings.map((booking) => (
-                  <Card key={booking.id} className="shadow-lg border-0">
-                    <CardHeader className="bg-gradient-to-r from-blue-600 to-orange-500 text-white">
-                      <div className="flex justify-between items-start">
-                        <CardTitle className="text-lg">{booking.service_name}</CardTitle>
-                        <Badge variant={booking.booking_status === "confirmed" ? "default" : "secondary"} className="bg-green-600">
-                          {booking.booking_status}
-                        </Badge>
-                      </div>
-                      <CardDescription className="text-blue-100">
-                        Booking ID: {booking.id.slice(0, 8)}...
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="p-6">
-                      <div className="space-y-3">
-                        <div className="flex items-center gap-3">
-                          <Calendar className="h-5 w-5 text-blue-600" />
-                          <span>{format(new Date(booking.booking_date), "PPP")}</span>
+              <>
+                <div className="hidden md:block">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Service</TableHead>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Time</TableHead>
+                        <TableHead>Duration</TableHead>
+                        <TableHead>Amount</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {userBookings.map((booking) => (
+                        <TableRow key={booking.id}>
+                          <TableCell className="font-medium">{booking.service_name}</TableCell>
+                          <TableCell>{new Date(booking.booking_date).toLocaleDateString()}</TableCell>
+                          <TableCell>{booking.booking_time}</TableCell>
+                          <TableCell>{booking.duration}</TableCell>
+                          <TableCell>₦{booking.amount.toLocaleString()}</TableCell>
+                          <TableCell>
+                            <Badge variant={booking.booking_status === "confirmed" ? "default" : "secondary"} 
+                                  className={booking.booking_status === "confirmed" ? "bg-green-600" : ""}>
+                              {booking.booking_status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Button variant="outline" size="sm" onClick={() => navigate(`/receipt?id=${booking.id}`)}>
+                              Receipt
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+                
+                <div className="grid grid-cols-1 gap-6 md:hidden">
+                  {userBookings.map((booking) => (
+                    <Card key={booking.id} className="shadow-lg border-0">
+                      <CardHeader className="bg-gradient-to-r from-blue-600 to-orange-500 text-white">
+                        <div className="flex justify-between items-start">
+                          <CardTitle className="text-lg">{booking.service_name}</CardTitle>
+                          <Badge variant={booking.booking_status === "confirmed" ? "default" : "secondary"} 
+                                className={booking.booking_status === "confirmed" ? "bg-green-600" : ""}>
+                            {booking.booking_status}
+                          </Badge>
                         </div>
-                        <div className="flex items-center gap-3">
-                          <Clock className="h-5 w-5 text-blue-600" />
-                          <span>{booking.booking_time} ({booking.duration})</span>
+                        <CardDescription className="text-blue-100">
+                          Booking ID: {booking.id.slice(0, 8)}...
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="p-6">
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-3">
+                            <Calendar className="h-5 w-5 text-blue-600" />
+                            <span>{new Date(booking.booking_date).toLocaleDateString()}</span>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <Clock className="h-5 w-5 text-blue-600" />
+                            <span>{booking.booking_time} ({booking.duration})</span>
+                          </div>
+                          <div className="flex justify-between items-center pt-3 border-t">
+                            <span className="font-semibold">Amount: ₦{booking.amount.toLocaleString()}</span>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              onClick={() => navigate(`/receipt?id=${booking.id}`)}
+                            >
+                              View Receipt
+                            </Button>
+                          </div>
                         </div>
-                        <div className="flex justify-between items-center pt-3 border-t">
-                          <span className="font-semibold">Amount: ₦{booking.amount.toLocaleString()}</span>
-                          <Button variant="outline" size="sm">
-                            View Receipt
-                          </Button>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </>
             )}
           </TabsContent>
 
