@@ -36,6 +36,7 @@ const Booking = () => {
   const { user, loading } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date>();
+  const [paystackLoaded, setPaystackLoaded] = useState(false);
 
   const [bookingData, setBookingData] = useState<BookingData>({
     firstName: "",
@@ -49,6 +50,34 @@ const Booking = () => {
     specialRequests: "",
     membershipType: location.state?.selectedMembership || ""
   });
+
+  // Load Paystack script
+  useEffect(() => {
+    const loadPaystackScript = () => {
+      if (document.querySelector('script[src*="paystack"]')) {
+        setPaystackLoaded(true);
+        return;
+      }
+
+      const script = document.createElement('script');
+      script.src = 'https://js.paystack.co/v1/inline.js';
+      script.onload = () => {
+        console.log('Paystack script loaded successfully');
+        setPaystackLoaded(true);
+      };
+      script.onerror = () => {
+        console.error('Failed to load Paystack script');
+        toast({
+          title: "Script Loading Error",
+          description: "Failed to load payment processor. Please refresh the page.",
+          variant: "destructive"
+        });
+      };
+      document.head.appendChild(script);
+    };
+
+    loadPaystackScript();
+  }, [toast]);
 
   // Update email when user is loaded
   useEffect(() => {
@@ -174,6 +203,59 @@ const Booking = () => {
     setIsLoading(false);
   };
 
+  const initializePayment = () => {
+    if (!paystackLoaded) {
+      toast({
+        title: "Payment System Loading",
+        description: "Please wait for the payment system to load and try again.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!(window as any).PaystackPop) {
+      toast({
+        title: "Payment System Error",
+        description: "Payment system not available. Please refresh the page and try again.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const total = calculateTotal();
+    console.log('Initializing payment for amount:', total);
+
+    try {
+      const paystackHandler = (window as any).PaystackPop.setup({
+        key: 'pk_test_4f155bc2248c217e5cacf4965e3686d0b3bb4229',
+        email: bookingData.email,
+        amount: total * 100, // Convert to kobo
+        currency: 'NGN',
+        ref: `BK-${Date.now()}`,
+        callback: function(response: any) {
+          console.log('Payment callback received:', response);
+          handlePaymentSuccess(response);
+        },
+        onClose: function() {
+          console.log('Payment popup closed');
+          handlePaymentClose();
+        }
+      });
+
+      console.log('Opening Paystack payment popup');
+      paystackHandler.openIframe();
+      
+    } catch (error) {
+      console.error('Payment initialization error:', error);
+      toast({
+        title: "Payment Error",
+        description: error instanceof Error ? error.message : "There was an error processing your payment. Please try again.",
+        variant: "destructive"
+      });
+      setIsLoading(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -206,35 +288,8 @@ const Booking = () => {
     }
 
     setIsLoading(true);
-
-    try {
-      const total = calculateTotal();
-      
-      if (!(window as any).PaystackPop) {
-        throw new Error('Paystack not loaded. Please refresh the page and try again.');
-      }
-      
-      const paystackHandler = (window as any).PaystackPop.setup({
-        key: 'pk_test_4f155bc2248c217e5cacf4965e3686d0b3bb4229',
-        email: bookingData.email,
-        amount: total * 100,
-        currency: 'NGN',
-        ref: `BK-${Date.now()}`,
-        callback: handlePaymentSuccess,
-        onClose: handlePaymentClose
-      });
-
-      paystackHandler.openIframe();
-      
-    } catch (error) {
-      console.error('Payment error:', error);
-      toast({
-        title: "Payment Error",
-        description: error instanceof Error ? error.message : "There was an error processing your payment. Please try again.",
-        variant: "destructive"
-      });
-      setIsLoading(false);
-    }
+    console.log('Form submitted, initializing payment...');
+    initializePayment();
   };
 
   // Redirect to auth if not authenticated and not loading
@@ -496,10 +551,10 @@ const Booking = () => {
 
                 <Button 
                   onClick={handleSubmit}
-                  disabled={isLoading || calculateTotal() === 0}
+                  disabled={isLoading || calculateTotal() === 0 || !paystackLoaded}
                   className="w-full mt-6 bg-blue-600 hover:bg-blue-700"
                 >
-                  {isLoading ? "Processing..." : `Pay ₦${calculateTotal().toLocaleString()}`}
+                  {isLoading ? "Processing..." : !paystackLoaded ? "Loading Payment..." : `Pay ₦${calculateTotal().toLocaleString()}`}
                 </Button>
               </CardContent>
             </Card>
