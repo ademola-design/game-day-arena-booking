@@ -9,10 +9,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 
 const Auth = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user, loading } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [loginData, setLoginData] = useState({
     email: "",
@@ -26,39 +28,47 @@ const Auth = () => {
   });
 
   useEffect(() => {
-    // Check if user is already logged in
-    const checkUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        navigate('/');
-      }
-    };
-    checkUser();
-  }, [navigate]);
+    // Redirect if already logged in
+    if (!loading && user) {
+      navigate('/dashboard');
+    }
+  }, [user, loading, navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email: loginData.email,
-      password: loginData.password,
-    });
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: loginData.email,
+        password: loginData.password,
+      });
 
-    if (error) {
+      if (error) {
+        console.error('Login error:', error);
+        toast({
+          title: "Login Failed",
+          description: error.message,
+          variant: "destructive"
+        });
+      } else if (data.user) {
+        console.log('Login successful:', data.user.email);
+        toast({
+          title: "Welcome back!",
+          description: "You have been logged in successfully."
+        });
+        navigate('/dashboard');
+      }
+    } catch (error) {
+      console.error('Unexpected login error:', error);
       toast({
         title: "Login Failed",
-        description: error.message,
+        description: "An unexpected error occurred. Please try again.",
         variant: "destructive"
       });
-    } else {
-      toast({
-        title: "Welcome back!",
-        description: "You have been logged in successfully."
-      });
-      navigate('/');
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   const handleSignup = async (e: React.FormEvent) => {
@@ -73,34 +83,80 @@ const Auth = () => {
       return;
     }
 
-    setIsLoading(true);
-
-    const { error } = await supabase.auth.signUp({
-      email: signupData.email,
-      password: signupData.password,
-      options: {
-        emailRedirectTo: `${window.location.origin}/`,
-        data: {
-          full_name: signupData.fullName
-        }
-      }
-    });
-
-    if (error) {
+    if (signupData.password.length < 6) {
       toast({
-        title: "Signup Failed",
-        description: error.message,
+        title: "Password Too Short",
+        description: "Password must be at least 6 characters long.",
         variant: "destructive"
       });
-    } else {
-      toast({
-        title: "Account Created!",
-        description: "Please check your email to verify your account."
-      });
-      navigate('/');
+      return;
     }
-    setIsLoading(false);
+
+    setIsLoading(true);
+
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email: signupData.email,
+        password: signupData.password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/`,
+          data: {
+            full_name: signupData.fullName
+          }
+        }
+      });
+
+      if (error) {
+        console.error('Signup error:', error);
+        toast({
+          title: "Signup Failed",
+          description: error.message,
+          variant: "destructive"
+        });
+      } else if (data.user) {
+        console.log('Signup successful:', data.user.email);
+        toast({
+          title: "Account Created!",
+          description: data.user.email_confirmed_at 
+            ? "Your account has been created successfully!" 
+            : "Please check your email to verify your account."
+        });
+        
+        // If email is already confirmed, redirect to dashboard
+        if (data.user.email_confirmed_at) {
+          navigate('/dashboard');
+        } else {
+          navigate('/');
+        }
+      }
+    } catch (error) {
+      console.error('Unexpected signup error:', error);
+      toast({
+        title: "Signup Failed",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-orange-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Don't render if user is already logged in
+  if (user) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-orange-50 flex items-center justify-center p-4">
@@ -135,6 +191,7 @@ const Auth = () => {
                       value={loginData.email}
                       onChange={(e) => setLoginData({...loginData, email: e.target.value})}
                       required
+                      disabled={isLoading}
                     />
                   </div>
                   <div>
@@ -145,6 +202,7 @@ const Auth = () => {
                       value={loginData.password}
                       onChange={(e) => setLoginData({...loginData, password: e.target.value})}
                       required
+                      disabled={isLoading}
                     />
                   </div>
                   <Button 
@@ -167,6 +225,7 @@ const Auth = () => {
                       value={signupData.fullName}
                       onChange={(e) => setSignupData({...signupData, fullName: e.target.value})}
                       required
+                      disabled={isLoading}
                     />
                   </div>
                   <div>
@@ -177,6 +236,7 @@ const Auth = () => {
                       value={signupData.email}
                       onChange={(e) => setSignupData({...signupData, email: e.target.value})}
                       required
+                      disabled={isLoading}
                     />
                   </div>
                   <div>
@@ -187,6 +247,8 @@ const Auth = () => {
                       value={signupData.password}
                       onChange={(e) => setSignupData({...signupData, password: e.target.value})}
                       required
+                      disabled={isLoading}
+                      minLength={6}
                     />
                   </div>
                   <div>
@@ -197,6 +259,8 @@ const Auth = () => {
                       value={signupData.confirmPassword}
                       onChange={(e) => setSignupData({...signupData, confirmPassword: e.target.value})}
                       required
+                      disabled={isLoading}
+                      minLength={6}
                     />
                   </div>
                   <Button 
@@ -216,6 +280,7 @@ const Auth = () => {
           <Button 
             variant="outline"
             onClick={() => navigate('/')}
+            disabled={isLoading}
           >
             ← Back to Home
           </Button>

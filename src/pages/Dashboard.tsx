@@ -32,7 +32,7 @@ interface Booking {
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const { user, loading } = useAuth();
+  const { user, loading, signOut } = useAuth();
   const { toast } = useToast();
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [userBookings, setUserBookings] = useState<Booking[]>([]);
@@ -40,37 +40,58 @@ const Dashboard = () => {
     fullName: "",
     phone: ""
   });
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingData, setIsLoadingData] = useState(true);
 
   useEffect(() => {
     if (!loading && !user) {
+      console.log('No user found, redirecting to auth');
       navigate('/auth');
       return;
     }
 
     if (user) {
-      fetchUserProfile();
-      fetchUserBookings();
+      console.log('User found, fetching data for:', user.email);
+      fetchUserData();
     }
   }, [user, loading, navigate]);
+
+  const fetchUserData = async () => {
+    if (!user) return;
+
+    setIsLoadingData(true);
+    try {
+      await Promise.all([fetchUserProfile(), fetchUserBookings()]);
+    } catch (error) {
+      console.error('Error fetching user data:', error);
+    } finally {
+      setIsLoadingData(false);
+    }
+  };
 
   const fetchUserProfile = async () => {
     if (!user) return;
 
     try {
+      console.log('Fetching profile for user:', user.id);
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', user.id)
-        .single();
+        .maybeSingle();
 
       if (error) {
         console.error('Error fetching profile:', error);
+        toast({
+          title: "Error loading profile",
+          description: error.message,
+          variant: "destructive"
+        });
       } else {
+        console.log('Profile data:', data);
         setUserProfile(data);
         setProfileData({
-          fullName: data.full_name || "",
-          phone: data.phone || ""
+          fullName: data?.full_name || "",
+          phone: data?.phone || ""
         });
       }
     } catch (error) {
@@ -81,8 +102,8 @@ const Dashboard = () => {
   const fetchUserBookings = async () => {
     if (!user) return;
     
-    setIsLoading(true);
     try {
+      console.log('Fetching bookings for user:', user.id);
       const { data, error } = await supabase
         .from('bookings')
         .select('*')
@@ -102,39 +123,65 @@ const Dashboard = () => {
       }
     } catch (error) {
       console.error('Error in fetchUserBookings:', error);
-    } finally {
-      setIsLoading(false);
     }
   };
 
   const updateProfile = async () => {
     if (!user) return;
 
-    const { error } = await supabase
-      .from('profiles')
-      .upsert({
-        id: user.id,
-        full_name: profileData.fullName,
-        phone: profileData.phone,
-        updated_at: new Date().toISOString()
-      });
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .upsert({
+          id: user.id,
+          full_name: profileData.fullName,
+          phone: profileData.phone,
+          updated_at: new Date().toISOString()
+        });
 
-    if (error) {
+      if (error) {
+        console.error('Error updating profile:', error);
+        toast({
+          title: "Error updating profile",
+          description: error.message,
+          variant: "destructive"
+        });
+      } else {
+        toast({
+          title: "Profile updated",
+          description: "Your profile has been updated successfully."
+        });
+        fetchUserProfile();
+      }
+    } catch (error) {
+      console.error('Error in updateProfile:', error);
       toast({
         title: "Error updating profile",
-        description: error.message,
+        description: "An unexpected error occurred.",
         variant: "destructive"
       });
-    } else {
-      toast({
-        title: "Profile updated",
-        description: "Your profile has been updated successfully."
-      });
-      fetchUserProfile();
     }
   };
 
-  if (loading) {
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      toast({
+        title: "Signed out",
+        description: "You have been signed out successfully."
+      });
+      navigate('/');
+    } catch (error) {
+      console.error('Error signing out:', error);
+      toast({
+        title: "Error signing out",
+        description: "There was an error signing you out.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  if (loading || isLoadingData) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-orange-50 flex items-center justify-center">
         <div className="text-center">
@@ -155,11 +202,18 @@ const Dashboard = () => {
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-4xl font-bold text-gray-900 mb-2">Dashboard</h1>
-            <p className="text-xl text-gray-600">Welcome back, {userProfile?.full_name || user.email}!</p>
+            <p className="text-xl text-gray-600">
+              Welcome back, {userProfile?.full_name || user.email}!
+            </p>
           </div>
-          <Button onClick={() => navigate('/')} variant="outline">
-            ← Back to Home
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={() => navigate('/')} variant="outline">
+              ← Back to Home
+            </Button>
+            <Button onClick={handleSignOut} variant="destructive">
+              Sign Out
+            </Button>
+          </div>
         </div>
 
         <Tabs defaultValue="bookings" className="space-y-6">
@@ -176,7 +230,7 @@ const Dashboard = () => {
                 New Booking
               </Button>
             </div>
-            <BookingsTab userBookings={userBookings} isLoading={isLoading} />
+            <BookingsTab userBookings={userBookings} isLoading={false} />
           </TabsContent>
 
           <TabsContent value="membership" className="space-y-6">

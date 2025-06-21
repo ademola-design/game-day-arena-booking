@@ -33,14 +33,14 @@ const Booking = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date>();
 
   const [bookingData, setBookingData] = useState<BookingData>({
     firstName: "",
     lastName: "",
-    email: "",
+    email: user?.email || "",
     phone: "",
     service: location.state?.selectedService || "",
     date: undefined,
@@ -49,6 +49,13 @@ const Booking = () => {
     specialRequests: "",
     membershipType: location.state?.selectedMembership || ""
   });
+
+  // Update email when user is loaded
+  useEffect(() => {
+    if (user && !bookingData.email) {
+      setBookingData(prev => ({ ...prev, email: user.email || "" }));
+    }
+  }, [user, bookingData.email]);
 
   const services = [
     { name: "Basketball Court", price: 2500 },
@@ -92,7 +99,7 @@ const Booking = () => {
   const saveBookingToDatabase = async (paymentReference: string) => {
     if (!user) {
       console.error('No user found when trying to save booking');
-      return null;
+      throw new Error('User not authenticated');
     }
 
     try {
@@ -126,7 +133,7 @@ const Booking = () => {
       return data;
     } catch (error) {
       console.error('Error in saveBookingToDatabase:', error);
-      return null;
+      throw error;
     }
   };
 
@@ -145,12 +152,6 @@ const Booking = () => {
         setTimeout(() => {
           navigate('/dashboard');
         }, 2000);
-      } else {
-        toast({
-          title: "Payment Successful",
-          description: "Payment completed but there was an issue saving your booking. Please contact support.",
-          variant: "destructive"
-        });
       }
     } catch (error) {
       console.error('Error saving booking after payment:', error);
@@ -235,6 +236,35 @@ const Booking = () => {
       setIsLoading(false);
     }
   };
+
+  // Redirect to auth if not authenticated and not loading
+  if (!loading && !user) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-orange-50 flex items-center justify-center">
+        <Card className="max-w-md mx-auto">
+          <CardContent className="p-6 text-center">
+            <h2 className="text-xl font-semibold mb-4">Authentication Required</h2>
+            <p className="text-gray-600 mb-4">Please sign in to make a booking.</p>
+            <Button onClick={() => navigate('/auth')} className="w-full">
+              Sign In
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Show loading state while auth is loading
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-orange-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-orange-50 py-8">
