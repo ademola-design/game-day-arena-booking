@@ -26,6 +26,30 @@ interface BookingCardProps {
 const BookingCard = ({ booking }: BookingCardProps) => {
   const navigate = useNavigate();
 
+  const handleViewReceipt = () => {
+    // Convert booking data to match the expected format for receipt
+    const receiptData = {
+      bookingId: booking.id,
+      firstName: '', // We don't have this in booking data
+      lastName: '',
+      email: '', // We don't have this in booking data
+      phone: '',
+      service: booking.service_name,
+      date: booking.booking_date,
+      time: booking.booking_time,
+      duration: booking.duration,
+      total: booking.amount,
+      specialRequests: ''
+    };
+
+    navigate('/receipt', {
+      state: {
+        paymentReference: booking.payment_reference,
+        bookingData: receiptData
+      }
+    });
+  };
+
   return (
     <Card className="shadow-lg border-0">
       <CardHeader className="bg-gradient-to-r from-blue-600 to-orange-500 text-white">
@@ -55,7 +79,7 @@ const BookingCard = ({ booking }: BookingCardProps) => {
             <Button 
               variant="outline" 
               size="sm" 
-              onClick={() => navigate(`/receipt?id=${booking.id}`)}
+              onClick={handleViewReceipt}
             >
               View Receipt
             </Button>

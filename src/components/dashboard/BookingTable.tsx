@@ -25,6 +25,30 @@ interface BookingTableProps {
 const BookingTable = ({ bookings }: BookingTableProps) => {
   const navigate = useNavigate();
 
+  const handleViewReceipt = (booking: Booking) => {
+    // Convert booking data to match the expected format for receipt
+    const receiptData = {
+      bookingId: booking.id,
+      firstName: '', // We don't have this in booking data
+      lastName: '',
+      email: '', // We don't have this in booking data
+      phone: '',
+      service: booking.service_name,
+      date: booking.booking_date,
+      time: booking.booking_time,
+      duration: booking.duration,
+      total: booking.amount,
+      specialRequests: ''
+    };
+
+    navigate('/receipt', {
+      state: {
+        paymentReference: booking.payment_reference,
+        bookingData: receiptData
+      }
+    });
+  };
+
   return (
     <Table>
       <TableHeader>
@@ -53,7 +77,7 @@ const BookingTable = ({ bookings }: BookingTableProps) => {
               </Badge>
             </TableCell>
             <TableCell>
-              <Button variant="outline" size="sm" onClick={() => navigate(`/receipt?id=${booking.id}`)}>
+              <Button variant="outline" size="sm" onClick={() => handleViewReceipt(booking)}>
                 Receipt
               </Button>
             </TableCell>

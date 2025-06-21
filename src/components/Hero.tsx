@@ -12,7 +12,7 @@ export const Hero = () => {
         <div className="animate-fade-in">
           <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight">
             Welcome to
-            <span className="block text-orange-300">SportZone</span>
+            <span className="block text-orange-300">Bako Sport Center</span>
           </h1>
           <p className="text-xl md:text-2xl mb-8 max-w-3xl mx-auto opacity-90">
             Your premier destination for sports, fitness, and recreational activities. 

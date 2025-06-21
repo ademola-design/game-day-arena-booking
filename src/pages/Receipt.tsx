@@ -37,7 +37,7 @@ const Receipt = () => {
 
         <Card className="shadow-lg border-0 mb-8" id="receipt">
           <CardHeader className="bg-gradient-to-r from-green-600 to-blue-600 text-white text-center">
-            <CardTitle className="text-2xl">SportZone Receipt</CardTitle>
+            <CardTitle className="text-2xl">Bako Sport Center Receipt</CardTitle>
             <CardDescription className="text-green-100">
               Booking Confirmation & Payment Receipt
             </CardDescription>
@@ -83,7 +83,7 @@ const Receipt = () => {
                       <p><span className="font-medium">Service:</span> {bookingData.service}</p>
                       {bookingData.date && <p><span className="font-medium">Date:</span> {format(new Date(bookingData.date), "PPP")}</p>}
                       {bookingData.time && <p><span className="font-medium">Time:</span> {bookingData.time}</p>}
-                      {bookingData.duration && <p><span className="font-medium">Duration:</span> {bookingData.duration} hour(s)</p>}
+                      {bookingData.duration && <p><span className="font-medium">Duration:</span> {bookingData.duration}</p>}
                     </>
                   )}
                   
@@ -109,8 +109,8 @@ const Receipt = () => {
 
               <div className="text-center pt-4 border-t">
                 <p className="text-gray-600 text-sm">
-                  SportZone - 123 Sports Avenue, Victoria Island, Lagos<br />
-                  Thank you for choosing SportZone!
+                  Bako Sport Center - 123 Sports Avenue, Victoria Island, Lagos<br />
+                  Thank you for choosing Bako Sport Center!
                 </p>
               </div>
             </div>
