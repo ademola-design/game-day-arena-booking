@@ -13,7 +13,8 @@ const Dashboard = () => {
     profileData,
     setProfileData,
     isLoadingData,
-    updateProfile
+    updateProfile,
+    getEnrichedBookingData
   } = useDashboardData();
 
   if (loading || isLoadingData) {
@@ -34,6 +35,7 @@ const Dashboard = () => {
           profileData={profileData}
           setProfileData={setProfileData}
           updateProfile={updateProfile}
+          getEnrichedBookingData={getEnrichedBookingData}
         />
       </div>
     </div>

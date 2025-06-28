@@ -32,6 +32,7 @@ interface DashboardContentProps {
   profileData: ProfileData;
   setProfileData: (data: ProfileData) => void;
   updateProfile: () => Promise<void>;
+  getEnrichedBookingData: (booking: Booking) => any;
 }
 
 const DashboardContent = ({ 
@@ -39,7 +40,8 @@ const DashboardContent = ({
   userBookings, 
   profileData, 
   setProfileData, 
-  updateProfile 
+  updateProfile,
+  getEnrichedBookingData
 }: DashboardContentProps) => {
   const navigate = useNavigate();
 
@@ -58,7 +60,7 @@ const DashboardContent = ({
             New Booking
           </Button>
         </div>
-        <BookingsTab userBookings={userBookings} isLoading={false} />
+        <BookingsTab userBookings={userBookings} isLoading={false} getEnrichedBookingData={getEnrichedBookingData} />
       </TabsContent>
 
       <TabsContent value="membership" className="space-y-6">
