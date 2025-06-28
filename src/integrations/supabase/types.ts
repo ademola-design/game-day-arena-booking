@@ -22,6 +22,7 @@ export type Database = {
           payment_status: string | null
           service_name: string
           service_type: string
+          special_requests: string | null
           user_id: string
         }
         Insert: {
@@ -36,6 +37,7 @@ export type Database = {
           payment_status?: string | null
           service_name: string
           service_type: string
+          special_requests?: string | null
           user_id: string
         }
         Update: {
@@ -50,6 +52,7 @@ export type Database = {
           payment_status?: string | null
           service_name?: string
           service_type?: string
+          special_requests?: string | null
           user_id?: string
         }
         Relationships: []
