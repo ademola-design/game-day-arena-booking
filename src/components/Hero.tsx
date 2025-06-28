@@ -30,7 +30,7 @@ export const Hero = () => {
               size="lg"
               variant="outline"
               onClick={() => document.getElementById('about')?.scrollIntoView({ behavior: 'smooth' })}
-              className="border-white text-white hover:bg-white hover:text-blue-600 px-8 py-4 text-lg font-semibold"
+              className="border-2 border-white text-white hover:bg-white hover:text-blue-600 px-8 py-4 text-lg font-semibold bg-transparent backdrop-blur-sm"
             >
               Learn More
             </Button>
