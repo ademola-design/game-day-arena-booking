@@ -106,7 +106,7 @@ export const useDashboardData = () => {
       console.log('Fetching bookings for user:', user.id);
       const { data, error } = await supabase
         .from('bookings')
-        .select('*')
+        .select('id, service_type, service_name, booking_date, booking_time, duration, amount, payment_reference, payment_status, booking_status, created_at, special_requests')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
@@ -119,6 +119,7 @@ export const useDashboardData = () => {
         });
       } else {
         console.log('Bookings data:', data);
+        console.log('Special requests in first booking:', data?.[0]?.special_requests);
         setUserBookings(data || []);
       }
     } catch (error) {
@@ -165,6 +166,7 @@ export const useDashboardData = () => {
 
   const getEnrichedBookingData = (booking: Booking) => {
     const nameParts = userProfile?.full_name?.split(' ') || ['', ''];
+    console.log('Enriching booking data with special requests:', booking.special_requests);
     return {
       bookingId: booking.id,
       firstName: nameParts[0] || '',
