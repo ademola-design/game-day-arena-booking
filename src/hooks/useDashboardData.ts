@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -23,6 +22,7 @@ interface Booking {
   payment_status: string;
   booking_status: string;
   created_at: string;
+  special_requests?: string | null;
 }
 
 interface ProfileData {
@@ -176,7 +176,7 @@ export const useDashboardData = () => {
       time: booking.booking_time,
       duration: booking.duration,
       total: booking.amount,
-      specialRequests: ''
+      specialRequests: booking.special_requests || ''
     };
   };
 

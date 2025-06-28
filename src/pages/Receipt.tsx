@@ -91,7 +91,7 @@ const Receipt = () => {
                     <p><span className="font-medium">Membership:</span> {bookingData.membershipType} Plan</p>
                   )}
                   
-                  {bookingData.specialRequests && (
+                  {bookingData.specialRequests && bookingData.specialRequests.trim() !== '' && (
                     <p><span className="font-medium">Special Requests:</span> {bookingData.specialRequests}</p>
                   )}
                 </div>

@@ -142,7 +142,8 @@ const Booking = () => {
         amount: calculateTotal(),
         payment_reference: paymentReference,
         payment_status: 'completed',
-        booking_status: 'confirmed'
+        booking_status: 'confirmed',
+        special_requests: bookingData.specialRequests || null
       };
 
       console.log('Saving booking to database:', bookingRecord);
@@ -175,12 +176,31 @@ const Booking = () => {
       if (savedBooking) {
         toast({
           title: "Booking Confirmed!",
-          description: "Your booking has been saved successfully. Redirecting to dashboard...",
+          description: "Your booking has been saved successfully. Redirecting to receipt...",
         });
         
-        setTimeout(() => {
-          navigate('/dashboard');
-        }, 2000);
+        // Navigate to receipt with booking data including special requests
+        const receiptData = {
+          bookingId: savedBooking.id,
+          firstName: bookingData.firstName,
+          lastName: bookingData.lastName,
+          email: bookingData.email,
+          phone: bookingData.phone,
+          service: bookingData.service,
+          membershipType: bookingData.membershipType,
+          date: selectedDate ? format(selectedDate, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
+          time: bookingData.time,
+          duration: bookingData.membershipType ? '30 days' : `${bookingData.duration} hour(s)`,
+          total: calculateTotal(),
+          specialRequests: bookingData.specialRequests
+        };
+
+        navigate('/receipt', {
+          state: {
+            paymentReference: response.reference,
+            bookingData: receiptData
+          }
+        });
       }
     } catch (error) {
       console.error('Error saving booking after payment:', error);
