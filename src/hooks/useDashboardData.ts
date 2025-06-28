@@ -163,6 +163,23 @@ export const useDashboardData = () => {
     }
   };
 
+  const getEnrichedBookingData = (booking: Booking) => {
+    const nameParts = userProfile?.full_name?.split(' ') || ['', ''];
+    return {
+      bookingId: booking.id,
+      firstName: nameParts[0] || '',
+      lastName: nameParts.slice(1).join(' ') || '',
+      email: user?.email || '',
+      phone: userProfile?.phone || '',
+      service: booking.service_name,
+      date: booking.booking_date,
+      time: booking.booking_time,
+      duration: booking.duration,
+      total: booking.amount,
+      specialRequests: ''
+    };
+  };
+
   return {
     user,
     loading,
@@ -172,6 +189,7 @@ export const useDashboardData = () => {
     setProfileData,
     isLoadingData,
     updateProfile,
-    fetchUserData
+    fetchUserData,
+    getEnrichedBookingData
   };
 };

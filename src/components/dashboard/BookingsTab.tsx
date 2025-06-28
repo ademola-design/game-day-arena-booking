@@ -23,9 +23,10 @@ interface Booking {
 interface BookingsTabProps {
   userBookings: Booking[];
   isLoading: boolean;
+  getEnrichedBookingData: (booking: Booking) => any;
 }
 
-const BookingsTab = ({ userBookings, isLoading }: BookingsTabProps) => {
+const BookingsTab = ({ userBookings, isLoading, getEnrichedBookingData }: BookingsTabProps) => {
   const navigate = useNavigate();
 
   if (isLoading) {
@@ -57,12 +58,12 @@ const BookingsTab = ({ userBookings, isLoading }: BookingsTabProps) => {
   return (
     <>
       <div className="hidden md:block">
-        <BookingTable bookings={userBookings} />
+        <BookingTable bookings={userBookings} getEnrichedBookingData={getEnrichedBookingData} />
       </div>
       
       <div className="grid grid-cols-1 gap-6 md:hidden">
         {userBookings.map((booking) => (
-          <BookingCard key={booking.id} booking={booking} />
+          <BookingCard key={booking.id} booking={booking} getEnrichedBookingData={getEnrichedBookingData} />
         ))}
       </div>
     </>

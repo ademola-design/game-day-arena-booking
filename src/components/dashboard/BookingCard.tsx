@@ -21,26 +21,14 @@ interface Booking {
 
 interface BookingCardProps {
   booking: Booking;
+  getEnrichedBookingData: (booking: Booking) => any;
 }
 
-const BookingCard = ({ booking }: BookingCardProps) => {
+const BookingCard = ({ booking, getEnrichedBookingData }: BookingCardProps) => {
   const navigate = useNavigate();
 
   const handleViewReceipt = () => {
-    // Convert booking data to match the expected format for receipt
-    const receiptData = {
-      bookingId: booking.id,
-      firstName: '', // We don't have this in booking data
-      lastName: '',
-      email: '', // We don't have this in booking data
-      phone: '',
-      service: booking.service_name,
-      date: booking.booking_date,
-      time: booking.booking_time,
-      duration: booking.duration,
-      total: booking.amount,
-      specialRequests: ''
-    };
+    const receiptData = getEnrichedBookingData(booking);
 
     navigate('/receipt', {
       state: {
